@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/containers/gvisor-tap-vsock/pkg/sshclient"
@@ -173,9 +174,33 @@ func saveThreadId() (uint32, error) {
 		return 0, err
 	}
 	defer file.Close()
-	tid := winquit.GetCurrentMessageLoopThreadId()
+
+	tid, err := getThreadId()
+	if err != nil {
+		return 0, err
+	}
+
 	fmt.Fprintf(file, "%d:%d\n", os.Getpid(), tid)
 	return tid, nil
+}
+
+func getThreadId() (uint32, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) // Adjust timeout as needed
+	defer cancel()
+
+	var tid uint32
+	for {
+		select {
+		case <-ctx.Done():
+			return 0, fmt.Errorf("failed to get thread ID within timeout")
+		default:
+			tid = winquit.GetCurrentMessageLoopThreadId()
+			if tid != 0 {
+				return tid, nil
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }
 
 // Creates an "error" style pop-up window
