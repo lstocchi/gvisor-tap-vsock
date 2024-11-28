@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package e2e
@@ -79,7 +80,6 @@ func stopProxy(noKill bool) error {
 	if err != nil {
 		return err
 	}
-
 	proc, err := os.FindProcess(int(pid))
 	if err != nil {
 		return err
